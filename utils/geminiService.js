@@ -1,15 +1,21 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 let genAICached = null;
 let apiKeyCached = null;
 
 const getGeminiApiKey = () => {
   const raw = process.env.GEMINI_API_KEY;
-  const key = typeof raw === 'string' ? raw.trim() : '';
+  const key = typeof raw === "string" ? raw.trim() : "";
 
   // Guard against accidentally passing literal strings from misconfigured envs
-  if (!key || key.toLowerCase() === 'undefined' || key.toLowerCase() === 'null') {
-    throw new Error('GEMINI_API_KEY is not set (check backend/.env and server startup)');
+  if (
+    !key ||
+    key.toLowerCase() === "undefined" ||
+    key.toLowerCase() === "null"
+  ) {
+    throw new Error(
+      "GEMINI_API_KEY is not set (check backend/.env and server startup)",
+    );
   }
 
   return key;
@@ -31,13 +37,13 @@ const getGenAI = () => {
 export const transcribeAudio = async (audioBuffer, mimeType) => {
   try {
     const genAI = getGenAI();
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
     const prompt = `Transcribe the following audio accurately. Provide clean, punctuated, and formatted text. Only return the transcription, nothing else.`;
 
     const audioPart = {
       inlineData: {
-        data: audioBuffer.toString('base64'),
+        data: audioBuffer.toString("base64"),
         mimeType: mimeType,
       },
     };
@@ -48,11 +54,14 @@ export const transcribeAudio = async (audioBuffer, mimeType) => {
 
     return transcript;
   } catch (error) {
-    console.error('Gemini transcription error:', error);
-    if (error instanceof Error && error.message.startsWith('GEMINI_API_KEY is not set')) {
+    console.error("Gemini transcription error:", error);
+    if (
+      error instanceof Error &&
+      error.message.startsWith("GEMINI_API_KEY is not set")
+    ) {
       throw error;
     }
-    throw new Error('Failed to transcribe audio');
+    throw new Error("Failed to transcribe audio");
   }
 };
 
@@ -60,7 +69,7 @@ export const transcribeAudio = async (audioBuffer, mimeType) => {
 export const processTranscript = async (transcript) => {
   try {
     const genAI = getGenAI();
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
     const prompt = `
 Analyze the following transcript from a student's voice note and provide:
@@ -115,17 +124,23 @@ Return ONLY valid JSON, no additional text.
     let text = response.text();
 
     // Clean up markdown code blocks if present
-    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    text = text
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
 
     const analysis = JSON.parse(text);
 
     return analysis;
   } catch (error) {
-    console.error('Gemini processing error:', error);
-    if (error instanceof Error && error.message.startsWith('GEMINI_API_KEY is not set')) {
+    console.error("Gemini processing error:", error);
+    if (
+      error instanceof Error &&
+      error.message.startsWith("GEMINI_API_KEY is not set")
+    ) {
       throw error;
     }
-    throw new Error('Failed to process transcript');
+    throw new Error("Failed to process transcript");
   }
 };
 
@@ -133,7 +148,7 @@ Return ONLY valid JSON, no additional text.
 export const detectKeywords = async (transcript) => {
   try {
     const genAI = getGenAI();
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
     const prompt = `
 Analyze the following transcript and detect instances where the speaker used any of these keywords:
@@ -170,67 +185,90 @@ Return ONLY valid JSON, no additional text.
     let text = response.text();
 
     // Clean up markdown code blocks if present
-    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    text = text
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
 
     const keywordAnalysis = JSON.parse(text);
 
     return keywordAnalysis.highlights || [];
   } catch (error) {
-    console.error('Keyword detection error:', error);
-    if (error instanceof Error && error.message.startsWith('GEMINI_API_KEY is not set')) {
+    console.error("Keyword detection error:", error);
+    if (
+      error instanceof Error &&
+      error.message.startsWith("GEMINI_API_KEY is not set")
+    ) {
       throw error;
     }
     return [];
   }
 };
 
-export const chatWithMemories = async (userMessage, allNotes, chatHistory = [], allTasks = []) => {
+export const chatWithMemories = async (
+  userMessage,
+  allNotes,
+  chatHistory = [],
+  allTasks = [],
+) => {
   try {
     const genAI = getGenAI();
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
     // Build context from notes
-    let notesContext = '';
+    let notesContext = "";
     if (allNotes && allNotes.length > 0) {
-      notesContext = allNotes.map((note, index) => {
-        const date = new Date(note.createdAt).toLocaleDateString();
-        return `
+      notesContext = allNotes
+        .map((note, index) => {
+          const date = new Date(note.createdAt).toLocaleDateString();
+          return `
 [Note ${index + 1}] - ${note.title} (${note.category}) - ${date}
 Summary: ${note.summary}
-Key Points: ${note.keyPoints ? note.keyPoints.join(', ') : 'None'}
-Transcript: ${note.transcript.substring(0, 500)}${note.transcript.length > 500 ? '...' : ''}
+Key Points: ${note.keyPoints ? note.keyPoints.join(", ") : "None"}
+Transcript: ${note.transcript.substring(0, 500)}${note.transcript.length > 500 ? "..." : ""}
 `;
-      }).join('\n---\n');
+        })
+        .join("\n---\n");
     } else {
-      notesContext = 'No notes available yet.';
+      notesContext = "No notes available yet.";
     }
 
     // Build context from tasks
-    let tasksContext = '';
+    let tasksContext = "";
     if (allTasks && allTasks.length > 0) {
-      tasksContext = allTasks.map((task, index) => {
-        const dueDate = new Date(task.dueDate).toLocaleDateString();
-        const statusEmoji = task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '🔄' : '⏸️';
-        return `
+      tasksContext = allTasks
+        .map((task, index) => {
+          const dueDate = new Date(task.dueDate).toLocaleDateString();
+          const statusEmoji =
+            task.status === "completed"
+              ? "✅"
+              : task.status === "in_progress"
+                ? "🔄"
+                : "⏸️";
+          return `
 [Task ${index + 1}] ${statusEmoji} ${task.title} (${task.category})
-Status: ${task.status.replace('_', ' ')}
+Status: ${task.status.replace("_", " ")}
 Progress: ${task.progressPercentage}%
-Submitted: ${task.submitted ? 'Yes' : 'No'}
+Submitted: ${task.submitted ? "Yes" : "No"}
 Due: ${dueDate}
-${task.description ? `Description: ${task.description}` : ''}
-${task.progressNotes && task.progressNotes.length > 0 ? `Latest Note: ${task.progressNotes[task.progressNotes.length - 1].note}` : ''}
+${task.description ? `Description: ${task.description}` : ""}
+${task.progressNotes && task.progressNotes.length > 0 ? `Latest Note: ${task.progressNotes[task.progressNotes.length - 1].note}` : ""}
 `;
-      }).join('\n---\n');
+        })
+        .join("\n---\n");
     } else {
-      tasksContext = 'No tasks available yet.';
+      tasksContext = "No tasks available yet.";
     }
 
     // Build chat history
-    let historyContext = '';
+    let historyContext = "";
     if (chatHistory && chatHistory.length > 0) {
-      historyContext = chatHistory.map(msg => 
-        `${msg.role === 'user' ? 'You' : 'Assistant'}: ${msg.message}`
-      ).join('\n');
+      historyContext = chatHistory
+        .map(
+          (msg) =>
+            `${msg.role === "user" ? "You" : "Assistant"}: ${msg.message}`,
+        )
+        .join("\n");
     }
 
     const prompt = `You are a helpful AI assistant that helps students recall and understand their notes AND track their assignment progress. You have access to all of the user's voice transcripts, summaries, key points, AND task/assignment progress.
@@ -258,7 +296,7 @@ When asked about progress:
 - "What's pending?" → List not started tasks
 - "What am I working on?" → List in-progress tasks
 
-${historyContext ? `Previous conversation:\n${historyContext}\n` : ''}
+${historyContext ? `Previous conversation:\n${historyContext}\n` : ""}
 
 User's Notes Context:
 ${notesContext}
@@ -276,28 +314,33 @@ Provide a helpful, conversational response based on the user's notes and tasks. 
 
     return aiResponse;
   } catch (error) {
-    console.error('Chat with memories error:', error);
-    if (error instanceof Error && error.message.startsWith('GEMINI_API_KEY is not set')) {
+    console.error("Chat with memories error:", error);
+    if (
+      error instanceof Error &&
+      error.message.startsWith("GEMINI_API_KEY is not set")
+    ) {
       throw error;
     }
-    throw new Error('Failed to generate chat response');
+    throw new Error("Failed to generate chat response");
   }
 };
 
 // Parse chat response for task update commands
 export const parseTaskUpdateCommand = (aiResponse) => {
-  const updateMatch = aiResponse.match(/UPDATE_TASK:\s*\{taskId\},\s*(\w+):\s*(.+)/);
-  
+  const updateMatch = aiResponse.match(
+    /UPDATE_TASK:\s*\{taskId\},\s*(\w+):\s*(.+)/,
+  );
+
   if (updateMatch) {
     const field = updateMatch[1];
     const value = updateMatch[2].trim();
-    
+
     return {
       hasUpdate: true,
       field,
       value,
     };
   }
-  
+
   return { hasUpdate: false };
 };
