@@ -16,8 +16,13 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors());
-app.options("*", cors());
+const corsOptions = {
+  origin: "https://recollectai-frontend.onrender.com",
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
